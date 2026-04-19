@@ -1,0 +1,20 @@
+\section{Introduction}
+\label{sec:intro}
+
+Linear representations are most convincing when they let us move between concepts in a simple and interpretable way. Yet most work on the linear representation hypothesis (LRH) tests whether a concept direction exists, not whether the straight line between two endpoints stays semantically meaningful \cite{park2024lrh,park2025categorical}. This gap matters in practice. Representation arithmetic, latent traversal, and steering methods all assume that moving in a linear direction will continue to mean something when concepts interact, overlap, or conflict.
+
+Our main question is simple: {\bf what does interpolation look like when the endpoints are incongruent?} Prior LRH work studies curated counterfactual contrasts that are intentionally clean \cite{park2024lrh,park2025categorical}. Prior interpolation geometry work shows that Euclidean chords can diverge from manifold-respecting paths, but it focuses mostly on generative image latents rather than text representations \cite{shao2017riemannian,struski2019feature,michelis2021linear}. These two lines of work leave a missing middle ground: pathwise geometry for text endpoints that are meaningful individually but semantically awkward together.
+
+We address this gap with a matched text interpolation study. We first establish a separable-control regime on curated LRH word-pair assets, where the same embedding model recovers strong alignment margins for several concept transformations. We then compare two paths for each \sugarcrepe example: a congruent path from a caption to its paraphrase, and an incongruent path from the same caption to its corrupted alternative. This paired design lets us ask whether incongruence changes path geometry beyond generic manifold sparsity. We measure the answer with off-manifold deviation, graph detour, dual-space path length, and retrieval switching.
+
+The headline result is not a single global penalty for incongruence. At the pooled level, incongruent paths are actually less off-manifold than congruent paths by 0.0083 and shorter in the induced dual space by 0.0462. However, this average hides sharp type dependence. In the \texttt{replace\_relation} subset, incongruent paths reverse direction and become more unstable than their congruent controls, with a 0.0154 increase in off-manifold deviation and a 0.0785 increase in dual path length. By contrast, object and attribute swaps often create shorter lexical perturbations than the paraphrase baseline, so the incongruent endpoint can sit on an easier local path.
+
+\para{Our contributions.} We make four concrete contributions:
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=2pt]
+    \item We formulate a matched path-centric evaluation for incongruent text concepts, rather than relying only on pointwise concept directions.
+    \item We conduct a separable-control experiment on LRH assets and show that \embmodel still expresses a strong linear regime for several curated transformations.
+    \item We show that interpolation instability is type-dependent: relation replacements behave like true failures, while lexical object and attribute swaps often do not.
+    \item We argue that structural incompatibility is a better operational target than contradiction alone for future interpolation studies and steering analyses.
+\end{itemize}
+
+\para{Paper organization.} \Secref{sec:related} situates the work in concept geometry and interpolation research. \Secref{sec:method} describes the datasets, metrics, and paired statistical design. \Secref{sec:results} reports control, pooled, subset, and qualitative results. \Secref{sec:discussion} interprets the findings, limitations, and implications.

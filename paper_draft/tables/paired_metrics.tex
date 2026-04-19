@@ -1,0 +1,18 @@
+\begin{table*}[t]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lcccccc@{}}
+        \toprule
+        Metric & Congruent mean & Incongruent mean & $\Delta$ (inc $-$ cong) & 95\% CI & $p$ & $q$ \\
+        \midrule
+        Off-manifold deviation & 0.1325 & {\bf 0.1242} & {\bf -0.0083} & [-0.0143, -0.0020] & 0.0105 & 0.0262 \\
+        Dual path length & 0.5108 & {\bf 0.4645} & {\bf -0.0462} & [-0.0777, -0.0129] & 0.0075 & 0.0262 \\
+        Dual detour ratio & 1.0612 & {\bf 1.0567} & -0.0045 & [-0.0133, 0.0047] & 0.3193 & 0.3992 \\
+        Switch count & 1.0133 & {\bf 1.0000} & -0.0133 & [-0.0311, 0.0000] & 0.2654 & 0.3992 \\
+        Graph detour ratio & 1.0000 & 1.0000 & 0.0000 & [0.0000, 0.0000] & 1.0000 & 1.0000 \\
+        \bottomrule
+    \end{tabular}%
+    }
+    \caption{Paired comparison on 225 \sugarcrepe examples. Best values in each row are shown in \textbf{bold}, taking lower values as better because all metrics measure deviation or path length.}
+    \label{tab:paired}
+\end{table*}

@@ -1,0 +1,36 @@
+\section{Methodology}
+\label{sec:method}
+
+\para{Problem setup.} We study straight-line interpolation between text embedding endpoints. Given two texts with embeddings $\vx_0, \vx_1 \in \R^d$, we evaluate interior points $\vx_t=(1-t)\vx_0+t\vx_1$ on an 11-point grid from $t=0$ to $1$. Our goal is not to build a new interpolation algorithm. Instead, we test whether path behavior changes when one endpoint is a congruent paraphrase and the other is an incongruent alternative.
+
+\para{Model and implementation.} All embeddings come from \embmodel through the OpenAI embeddings API. We cache responses on disk in \texttt{results/cache/} and run the experiment with seed 42. The final run uses Python 3.12.8, 2{,}000 bootstrap samples, and a $k$-nearest-neighbor graph with $k=15$. Although the machine exposes four NVIDIA RTX A6000 GPUs, the final pipeline is API-based and does not use them.
+
+\subsection{Datasets and Experimental Design}
+
+\para{Separable-control assets.} We use 27 curated concept files from \texttt{code/linear\_rep\_geometry/word\_pairs/}. Each file contains paired lexical contrasts such as inflectional changes or language mappings. We split pairs into train and test sets, estimate a mean concept vector from training differences, and measure whether held-out differences align more strongly with the correct concept vector than with other concept vectors. This is a sanity check, not a full causal-inner-product replication.
+
+\para{Matched caption triplets.} Our main experiment uses 225 examples from \sugarcrepe, sampled evenly across \texttt{swap\_object}, \texttt{swap\_atribute}, and \texttt{replace\_relation}. Each example supplies a source caption, a congruent paraphrase, and a negative caption. We compare two paths for the same source:
+\begin{align}
+    \text{congruent path}:& \quad \texttt{caption} \rightarrow \texttt{caption2}, \\
+    \text{incongruent path}:& \quad \texttt{caption} \rightarrow \texttt{negative\_caption}.
+\end{align}
+This matched design controls for image identity and much of the local lexical context.
+
+\subsection{Metrics}
+
+\para{Control metric.} For the LRH assets, we report same-concept alignment, off-target alignment, and their difference as an alignment margin. Larger margins indicate stronger separability with less cross-concept interference.
+
+\para{Path geometry metrics.} For \sugarcrepe paths we compute five metrics.
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item {\bf \offmanifold:} average nearest-neighbor distance from interior interpolation points to the sampled caption set.
+    \item {\bf \dualpath:} cumulative Jensen-Shannon length after projecting each interpolation point into a local similarity-softmax simplex.
+    \item {\bf \dualratio:} \dualpath divided by the endpoint distance in the same dual space.
+    \item {\bf switch count:} number of changes in source/target/alternate anchor assignment along the path.
+    \item {\bf \graphratio:} shortest-path distance on the $k$-NN graph divided by direct endpoint distance.
+\end{itemize}
+
+\para{Baselines.} We compare three baselines. First, other concept vectors act as off-target baselines in the separable-control experiment. Second, congruent paraphrase interpolation is the primary baseline for incongruent interpolation. Third, direct endpoint distance is the denominator baseline for graph and dual detour ratios.
+
+\subsection{Statistical Analysis}
+
+\para{Paired inference.} We evaluate congruent versus incongruent differences with a paired permutation sign test. We report 95\% bootstrap confidence intervals for mean differences, paired standardized effect sizes ($d_z$), and Benjamini-Hochberg corrected $q$-values across the main metric family. Because the design is paired within each example, the key comparisons are within-example differences rather than cross-example averages alone.

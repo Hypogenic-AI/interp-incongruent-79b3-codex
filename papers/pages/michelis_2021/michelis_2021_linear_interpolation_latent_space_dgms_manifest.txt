@@ -1,0 +1,9 @@
+PDF: papers/michelis_2021_linear_interpolation_latent_space_dgms.pdf
+Total pages: 11
+Pages per chunk: 3
+
+Chunks:
+  michelis_2021_linear_interpolation_latent_space_dgms_chunk_001.pdf: pages 1-3
+  michelis_2021_linear_interpolation_latent_space_dgms_chunk_002.pdf: pages 4-6
+  michelis_2021_linear_interpolation_latent_space_dgms_chunk_003.pdf: pages 7-9
+  michelis_2021_linear_interpolation_latent_space_dgms_chunk_004.pdf: pages 10-11

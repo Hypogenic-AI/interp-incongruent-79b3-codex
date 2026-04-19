@@ -1,0 +1,798 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at .codex/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. VERIFY COMMAND TEMPLATES: Command templates (math.tex, general.tex, macros.tex) are pre-copied to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# Interpolation for Incongruent Concepts
+
+## 1. Executive Summary
+This project asked what interpolation looks like when the endpoints are not cleanly separable concepts, but instead incongruent or contradictory semantic descriptions. I tested this with a real embedding model (`text-embedding-3-large`) using two stages: a separable-control experiment on LRH word-pair assets, and a matched congruent-vs-incongruent path study on SugarCrepe++ caption triplets.
+
+The main finding is not a simple global “incongruent is more curved” story. Instead, interpolation instability is **type-dependent**. Relation replacements (`replace_relation`) behave like genuine incongruence: they yield larger off-manifold deviation and larger dual-space path length than paraphrase controls. Attribute and object swaps do not; in those subsets, the negative caption is often lexically closer to the source than the paraphrase, so the linear path can look *more* locally regular than the congruent control.
+
+Practical implication: interpolation failure is not triggered by contradiction alone. It appears when the endpoint change disrupts **relational structure**, not merely when a caption is corrupted by a nearby lexical substitution.
+
+## 2. Research Question &amp; Motivation
+The motivating question was: under the linear representation hypothesis and an information-geometric view of representation space, what should we expect when interpolating between incongruent concepts rather than causally separable ones?
+
+This matters because most LRH work studies curated counterfactual contrasts and mostly asks whether concept directions exist. That leaves open the pathwise question: even if endpoints are meaningful, does the straight line between them remain semantically meaningful when the concepts are incompatible? Bridging LRH with interpolation geometry matters for any attempt to use representation arithmetic, steering, or latent traversal outside clean toy settings.
+
+## 3. Literature Review Summary
+The pre-gathered literature suggested a specific gap:
+
+- Park et al. (2024) formalize LRH and causal inner products for clean concept directions.
+- Park et al. (2025) extend this to categorical and hierarchical concepts.
+- Nguyen and Leng (2025) argue that ambiguous concepts need more flexible estimation than strict counterfactual pairs.
+- Michelis and Becker (2021), Struski et al. (2019), and Shao et al. (2017) show that straight lines can diverge from manifold-respecting paths, but mostly in generative image latents.
+
+What was missing was a direct text-space test of whether incongruent endpoints produce visibly different interpolation behavior from congruent controls.
+
+## 4. Methodology
+
+### 4.1 Experimental Setup
+- Model: `text-embedding-3-large` via the OpenAI embeddings API
+- Local resources used:
+  - `code/linear_rep_geometry/word_pairs/` for separable-control concepts
+  - `datasets/sugarcrepe_pp/` for matched caption triplets
+- Python: 3.12.8
+- Hardware detected: 4x NVIDIA RTX A6000 (unused for the final API-based run)
+- Random seed: 42
+- SugarCrepe sample: 75 examples each from `swap_object`, `swap_atribute`, and `replace_relation` for 225 matched examples total
+- Interpolation grid: 11 points per path
+- k-NN graph: `k=15`
+- Bootstrap samples: 2,000
+
+I initially attempted a local transformer stack, but the isolated `.venv` developed a broken `torch`/`scipy` state during install. Because the task explicitly required real models rather than simulations, I switched to a real embedding API with on-disk caching in `results/cache/`.
+
+### 4.2 Experiment 1: Separable-Control LRH Sanity Check
+For each of 27 concept files from the LRH repository, I split word pairs into train/test, estimated a mean concept vector on the train split, and evaluated held-out pair differences against that vector versus other concept vectors.
+
+This is not a full replication of causal-inner-product LRH, but it is a sanity check that the representation model still shows a regime where some concepts behave approximately linearly and with limited off-target interference.
+
+### 4.3 Experiment 2: Congruent vs Incongruent Caption Interpolation
+Each SugarCrepe example provides:
+- `caption`: the source description
+- `caption2`: a congruent paraphrase
+- `negative_caption`: an incongruent or corrupted alternative
+
+For each example I compared:
+- Congruent path: `caption -&gt; caption2`
+- Incongruent path: `caption -&gt; negative_caption`
+
+Metrics:
+- `off_manifold_mean`: average nearest-neighbor distance from interior interpolation points to the sampled caption set
+- `dual_path_length`: cumulative Jensen-Shannon path length in a local similarity-softmax simplex
+- `dual_detour_ratio`: dual path length divided by endpoint dual distance
+- `switch_count`: number of changes in source/target/alternate anchor assignment along the path
+- `detour_ratio`: graph geodesic divided by direct endpoint distance
+
+### 4.4 Statistical Plan
+- Paired permutation sign test on congruent vs incongruent metrics
+- Bootstrap 95% confidence intervals for mean differences
+- Benjamini-Hochberg correction across the main metric family
+- Paired standardized effect size (`d_z`)
+
+## 5. Results
+
+### 5.1 Separable-Control Experiment
+The control experiment did recover a strong separable regime for several curated concepts.
+
+| Concept | Same-concept alignment | Off-target alignment | Margin |
+|---|---:|---:|---:|
+| `Ving - 3pSg` | 0.629 | -0.018 | 0.647 |
+| `adj - superlative` | 0.668 | 0.052 | 0.616 |
+| `adj - comparative` | 0.620 | 0.033 | 0.587 |
+| `3pSg - Ved` | 0.568 | -0.000 | 0.568 |
+| `verb - Ving` | 0.587 | 0.061 | 0.525 |
+
+This supports the claim that the representation model can express clean linear contrasts in at least some curated settings.
+
+Figure files:
+- `figures/control_alignment_margin.png`
+- `figures/control_interference_heatmap.png`
+
+### 5.2 Main Paired Comparison
+
+| Metric | Congruent mean | Incongruent mean | Difference (inc - cong) | 95% CI | p | q |
+|---|---:|---:|---:|---:|---:|---:|
+| Off-manifold deviation | 0.1325 | 0.1242 | -0.0083 | [-0.0143, -0.0020] | 0.0105 | 0.0262 |
+| Dual path length | 0.5108 | 0.4645 | -0.0462 | [-0.0777, -0.0129] | 0.0075 | 0.0262 |
+| Dual detour ratio | 1.0612 | 1.0567 | -0.0045 | [-0.0133, 0.0047] | 0.3193 | 0.3992 |
+| Switch count | 1.0133 | 1.0000 | -0.0133 | [-0.0311, 0.0000] | 0.2654 | 0.3992 |
+| Graph detour ratio | 1.0000 | 1.0000 | 0.0000 | [0.0000, 0.0000] | 1.0000 | 1.0000 |
+
+At the pooled level, incongruent paths were actually *less* off-manifold and had *shorter* dual paths than congruent ones. This contradicts the original simple hypothesis.
+
+### 5.3 Subset Breakdown
+The pooled reversal is caused by strong heterogeneity across subsets.
+
+#### `replace_relation`
+- Off-manifold mean difference: `+0.0154`
+- Dual path length difference: `+0.0785`
+- Dual detour ratio difference: `+0.0280`
+- In 64% of examples, incongruent paths were larger than congruent paths on these metrics.
+
+This is the subset that behaves like the original hypothesis: changing a relation produces a less stable interpolation trajectory.
+
+#### `swap_atribute`
+- Off-manifold mean difference: `-0.0235`
+- Dual path length difference: `-0.1316`
+- Dual detour ratio difference: `-0.0199`
+
+#### `swap_object`
+- Off-manifold mean difference: `-0.0167`
+- Dual path length difference: `-0.0857`
+- Dual detour ratio difference: `-0.0216`
+
+These two subsets go the other way. The endpoint analysis explains why:
+
+| Subset | Congruent direct distance | Incongruent direct distance |
+|---|---:|---:|
+| `replace_relation` | 0.4876 | 0.5429 |
+| `swap_atribute` | 0.4672 | 0.3826 |
+| `swap_object` | 0.4762 | 0.4161 |
+
+For object and attribute swaps, the negative caption is often closer to the source than the paraphrase. That means the “incongruent” endpoint is frequently a shorter lexical perturbation, not a stronger semantic detour.
+
+### 5.4 Qualitative Trajectories
+Representative `replace_relation` failures:
+
+1. Source: “Two people are holding phones together to create a linking.”
+   Target: “Two men are dropping phones, causing them to unlink.”
+   The midpoint retrieval jumps directly from the source wording to the contradictory target, with `off_manifold_mean = 0.2706` and `dual_detour_ratio = 1.3243`.
+
+2. Source: “The back view of an airplane on a runway.”
+   Target: “An airplane is flying over a runway.”
+   Again the midpoint flips between incompatible event descriptions, with `off_manifold_mean = 0.2672` and `dual_detour_ratio = 1.3323`.
+
+Representative `swap_object` counterexample:
+
+1. Source: “A city scape scene.”
+   Incongruent target: “A train yard scene with a city scape in the foreground.”
+   Congruent target: “a train yard is visible in the foreground of a cityscape scene.”
+   Here the congruent paraphrase is actually the more off-manifold path (`0.2660`) than the incongruent target (`0.2464`), because the negative caption remains very close to the source wording.
+
+Raw outputs:
+- `results/sugarcrepe_interpolation_results.csv`
+- `results/paired_metric_summary.csv`
+- `results/qualitative_retrieval_examples.csv`
+
+Figures:
+- `figures/off_manifold_mean_by_pair_type.png`
+- `figures/dual_detour_ratio_by_pair_type.png`
+- `figures/detour_ratio_by_pair_type.png`
+
+## 6. Analysis &amp; Discussion
+The clearest answer to the research question is:
+
+**Interpolation between incongruent concepts does not have a single generic signature. It depends on what makes them incongruent.**
+
+Three conclusions follow:
+
+1. Clean separable concepts still exist.
+   The LRH-style control recovered strong within-concept alignment margins for several curated transformations. So the model does express a regime in which linear concept arithmetic is plausible.
+
+2. Relation incongruence is the strongest failure mode.
+   When the corruption changes the relation or event structure, interpolation becomes less stable: more off-manifold and longer in the induced dual space.
+
+3. Lexically local corruption is not enough.
+   Attribute and object swaps often look easier than paraphrase interpolation because the negative caption stays close in wording and local geometry, even if it is semantically wrong.
+
+This suggests that “incongruence” should not be defined only by truth-condition mismatch. A better operationalization for interpolation studies is **structural incompatibility**, especially relational incompatibility.
+
+## 7. Limitations
+- This is an embedding-space study, not a hidden-state study with the causal inner product from Park et al. (2024). It tests the broader hypothesis, not the full LRH formalism.
+- The graph geodesic ratio collapsed to 1.0 in this sampled k-NN graph, so it did not discriminate conditions. The meaningful evidence came from off-manifold and dual-space measures instead.
+- SugarCrepe++ is a proxy benchmark. Its three subsets do not represent the same kind of incongruence.
+- API token usage was cached locally, but exact monetary cost was not logged by the request layer.
+- The environment had available GPUs, but the final experiment was API-based, so GPU acceleration was not used.
+
+## 8. Conclusions &amp; Next Steps
+The answer to “what does interpolation between incongruent concepts look like?” is: **it looks unstable when the conflict is relational, but not necessarily when the conflict is a short lexical swap.** In the latter case, the corrupted endpoint can still sit on a short, locally smooth path.
+
+The theoretical implication is that interpolation failure tracks structural entanglement more than contradiction in the abstract. For future work:
+- rerun the same analysis on hidden states from an open LLM with explicit LRH-style concept vectors,
+- replace SugarCrepe object/attribute subsets with a benchmark where the incongruent endpoint is not lexically closer than the paraphrase, and
+- use a stronger manifold estimator so graph-geodesic detour becomes informative.
+
+## 9. Reproducibility
+Setup and run:
+
+```bash
+source .venv/bin/activate
+python src/run_research.py
+```
+
+The script is deterministic with `seed=42` aside from external API service nondeterminism. Embeddings are cached in `results/cache/`.
+
+## 10. References
+- Park, Choe, Veitch. *The Linear Representation Hypothesis and the Geometry of Large Language Models*. 2024.
+- Park, Choe, Jiang, Veitch. *The Geometry of Categorical and Hierarchical Concepts in Large Language Models*. 2025.
+- Nguyen, Leng. *Toward a Flexible Framework for LRH Using Maximum Likelihood Estimation*. 2025.
+- Michelis, Becker. *On Linear Interpolation in the Latent Space of Deep Generative Models*. 2021.
+- Struski et al. *Feature-Based Interpolation and Geodesics in the Latent Spaces of Generative Models*. 2019.
+- Shao, Kumar, Fletcher. *The Riemannian Geometry of Deep Generative Models*. 2017.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Research Plan: Interpolation for Incongruent Concepts
+
+## Motivation &amp; Novelty Assessment
+
+### Why This Research Matters
+The linear representation hypothesis (LRH) and related information-geometric work largely analyze concepts that are intentionally clean, separable, and counterfactually well behaved. Real semantic systems are not restricted to such cases: many concepts are awkwardly composed, mutually interfering, or only locally meaningful, so understanding interpolation there is necessary if representation geometry is meant to explain actual model behavior rather than curated toy contrasts.
+
+### Gap in Existing Work
+The literature review shows a clear split. LRH papers establish linear concept directions and orthogonality for curated concepts, while interpolation papers show that straight lines can diverge from manifold-respecting paths, but mainly in generative image latents rather than text representations. What is missing is a direct test of what happens when endpoints are semantically incongruent in a text representation space and whether the resulting paths become more off-manifold, more circuitous, or more semantically unstable than congruent controls.
+
+### Our Novel Contribution
+We test interpolation under matched congruent versus incongruent endpoint pairs in a real text representation model. Concretely, we combine:
+- an LRH-style separable-concept control using curated word-pair directions from `code/linear_rep_geometry/word_pairs`, and
+- a path study on SugarCrepe++ where each example gives both a congruent pair (`caption`, `caption2`) and an incongruent pair (`caption`, `negative_caption`).
+
+This allows us to ask not just whether a point estimate of a concept is linear, but whether an interpolation path remains close to the empirical semantic manifold when the endpoint concepts disagree.
+
+### Experiment Justification
+- Experiment 1: Estimate concept directions on curated LRH word pairs and measure within-concept projection strength and cross-concept interference.
+  Why needed: This establishes a separable-control regime and verifies that the chosen representation model reproduces the expected low-interference geometry at least approximately.
+- Experiment 2: Compare congruent and incongruent caption interpolation on SugarCrepe++ using manifold detour, off-manifold deviation, and induced dual-space path length.
+  Why needed: This directly tests the user’s question about what interpolation between incongruent concepts looks like.
+- Experiment 3: Robustness and qualitative retrieval analysis on representative cases.
+  Why needed: Aggregate metrics alone can hide whether the path collapses to generic meanings, jumps between neighborhoods, or passes through semantically unstable regions.
+
+## Research Question
+What changes when we interpolate between incongruent concepts instead of causally separable concepts: do the paths become more off-manifold, more geometrically circuitous, and less semantically coherent in both a representation space and an induced dual probability simplex?
+
+## Background and Motivation
+Prior LRH work focuses on concept directions that are cleanly estimable from counterfactual pairs and often approximately orthogonal under a causal inner product. Prior interpolation geometry work shows that straight-line interpolation can be a poor proxy for geodesics on curved manifolds. The missing connection is whether semantic incongruence itself predicts interpolation failure: if endpoints encode incompatible or fragile compositions, the straight line may leave the semantic manifold even when each endpoint individually lies on it.
+
+## Hypothesis Decomposition
+- H1: Curated separable concepts from LRH assets will show stronger within-concept alignment and lower off-target interference than incongruent caption differences.
+- H2: Linear interpolation between congruent caption pairs will stay closer to the empirical caption manifold than interpolation between incongruent pairs.
+- H3: Incongruent pairs will have larger graph-geodesic detour ratios than congruent pairs, indicating that the manifold-respecting route bends away from the Euclidean chord.
+- H4: Incongruent pairs will produce longer paths in an induced dual-space probability simplex over local semantic neighborhoods, reflecting higher semantic instability.
+
+Independent variables:
+- Pair type: separable-control, congruent, incongruent
+- SugarCrepe subset: `swap_object`, `swap_atribute`, `replace_relation`
+
+Dependent variables:
+- Projection margin and cross-concept interference
+- Mean off-manifold nearest-neighbor distance of interpolation points
+- Graph-geodesic detour ratio
+- Dual-space path length / detour ratio
+- Neighborhood switching count and qualitative retrieval trajectory
+
+Alternative explanations:
+- Effects could arise from lexical overlap or caption length rather than incongruence.
+- Effects could reflect encoder limitations rather than a genuine geometric phenomenon.
+- A sparse benchmark manifold could inflate detour ratios for all pairs.
+
+Mitigations:
+- Use matched pairs from the same SugarCrepe example for congruent versus incongruent comparison.
+- Report within-subset and pooled results.
+- Include a separable-control concept experiment to verify the encoder is not uniformly noisy.
+
+## Proposed Methodology
+
+### Approach
+Use a real transformer representation model to encode words and captions. First, reproduce a lightweight separability sanity check using curated LRH word pairs. Then build an empirical semantic manifold from sampled SugarCrepe captions, paraphrases, and negatives. Compare linear interpolation outcomes between congruent and incongruent endpoints by measuring how far the chord departs from the manifold and how much longer the manifold-respecting path becomes.
+
+The analysis is deliberately path-centric rather than probe-centric. This is the novel piece relative to the cited LRH work.
+
+### Experimental Steps
+1. Verify environment, GPU, dataset schemas, and repository assets.
+   Rationale: avoid assumptions and ensure the plan matches local resources.
+2. Install missing dependencies in `.venv` using `uv add`.
+   Rationale: keep the run isolated and reproducible.
+3. Load a modern open transformer representation model and implement pooled text encoding.
+   Rationale: use a real model with stable sentence-level geometry.
+4. Run Experiment 1 on LRH word-pair assets.
+   Rationale: establish a low-interference control regime for separable concepts.
+5. Sample a balanced subset from SugarCrepe++, encode all unique texts, and construct a k-NN graph manifold.
+   Rationale: approximate the empirical semantic manifold with tractable computation.
+6. For each example, compare the congruent path (`caption` -&gt; `caption2`) and incongruent path (`caption` -&gt; `negative_caption`).
+   Rationale: matched-pair design controls for image identity and surface form.
+7. Compute primal and dual metrics, run paired statistical tests, and save figures/tables.
+   Rationale: quantify whether incongruence predicts geometric and semantic instability.
+8. Inspect representative trajectories by nearest-neighbor retrieval along the path.
+   Rationale: answer what the interpolation “looks like,” not only whether metrics differ.
+
+### Baselines
+- Random other-concept directions for the separable-control experiment.
+- Congruent caption interpolation as the primary baseline for incongruent interpolation.
+- Direct Euclidean chord distance as the baseline against graph-geodesic distance.
+
+### Evaluation Metrics
+- Projection score margin: same-concept versus other-concept alignment.
+- Cross-concept interference: similarity between concept directions.
+- Off-manifold deviation: mean nearest-neighbor distance of interpolated points to the sampled caption set.
+- Geodesic detour ratio: shortest-path distance on the k-NN graph divided by direct embedding distance.
+- Dual-space path length: cumulative Jensen-Shannon distance across interpolation steps after softmaxing similarities to a local anchor set.
+- Neighborhood switching count: number of changes in nearest retrieved caption family across the path.
+
+### Statistical Analysis Plan
+- Paired Wilcoxon signed-rank tests for congruent versus incongruent metrics on matched SugarCrepe examples.
+- Bootstrap 95% confidence intervals for mean differences and ratios.
+- Benjamini-Hochberg correction across the main family of paired tests.
+- Report effect sizes using paired standardized mean differences where sensible.
+
+## Expected Outcomes
+Results supporting the hypothesis would show:
+- low interference for curated LRH concept directions,
+- significantly larger off-manifold deviation for incongruent paths,
+- significantly larger graph-geodesic detour ratios for incongruent pairs, and
+- longer dual-space paths with more neighborhood switching for incongruent pairs.
+
+Results against the hypothesis would show little or no difference between congruent and incongruent pairs after matching, suggesting that interpolation failure is driven more by generic manifold sparsity than by semantic incongruence.
+
+## Timeline and Milestones
+- Phase 0-1 planning and resource review: complete first
+- Environment and implementation: one coding pass
+- Experiment execution: one full run on sampled SugarCrepe data plus LRH control
+- Analysis and figure generation: immediately after experiment run
+- Documentation and validation: final pass after outputs are stable
+
+## Potential Challenges
+- The chosen encoder may not reproduce strong LRH-like separability.
+  Mitigation: treat Experiment 1 as a sanity check rather than a full replication.
+- Hugging Face model download or memory issues.
+  Mitigation: use a smaller modern encoder and batch conservatively.
+- Graph-geodesic metrics may be sensitive to k-NN graph sparsity.
+  Mitigation: test a modest sensitivity range for `k` and report the default setting.
+
+## Success Criteria
+- `planning.md`, code, results, figures, `REPORT.md`, and `README.md` are all produced.
+- At least one real representation model is run successfully.
+- The main congruent versus incongruent comparison is completed with paired statistics and qualitative examples.
+- The final report gives a clear answer to what interpolation between incongruent concepts looks like in this operationalization.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review: Interpolation for Incongruent Concepts
+
+## Review Scope
+
+### Research Question
+What should we expect when interpolating between incongruent concepts, rather than causally separable concepts, under the linear representation hypothesis and an information-geometric view of representation space?
+
+### Inclusion Criteria
+- Papers that formalize or test the linear representation hypothesis.
+- Papers that study concept geometry, semantic hierarchy, or compositional structure in representation space.
+- Papers that study interpolation or geodesics in non-Euclidean latent spaces.
+- Resources with runnable code or reusable benchmark assets.
+
+### Exclusion Criteria
+- Purely application-driven interpolation papers without geometric or representational analysis.
+- Papers centered only on image generation quality with no useful geometric machinery.
+- Broad interpretability work not tied to concept geometry or interpolation.
+
+### Time Frame
+- Foundations: 2017-present
+- Main emphasis: 2021-2025
+
+### Sources
+- arXiv
+- ACL Anthology
+- OpenReview
+- GitHub
+- Hugging Face Datasets
+
+## Search Log
+
+| Date | Query / Method | Source | Notes |
+|------|----------------|--------|-------|
+| 2026-04-19 | `paper-finder` helper | local script | Local service path did not return usable results; switched to manual search. |
+| 2026-04-19 | `linear representation hypothesis`, `geometry of concepts`, `latent interpolation`, `Riemannian geometry latent space` | arXiv API | Produced the core theory and interpolation paper set. |
+| 2026-04-19 | title-specific repository search | GitHub | Resolved official code for the two Park papers and two interpolation papers. |
+| 2026-04-19 | `cfq`, `SugarCrepe++` | Hugging Face Datasets | Downloaded compact benchmark bundles suitable for immediate experiments. |
+
+## Screening Results
+
+| Paper | Decision | Notes |
+|------|----------|-------|
+| Park et al. 2024, LRH | Include | Core formalization for separable concepts. |
+| Park et al. 2025, categorical/hierarchical geometry | Include | Most direct extension toward non-binary and structured concepts. |
+| Nguyen and Leng 2025 | Include | Practical extension for ambiguous concepts and activation steering. |
+| Michelis and Becker 2021 | Include | Strong baseline showing straight-line interpolation can be misleading. |
+| Struski et al. 2019 | Include | Feature-conditioned interpolation for arbitrary latent densities. |
+| Shao et al. 2017 | Include | Foundational Riemannian geometry tools. |
+| Li et al. 2025 | Include | Adjacent evidence on large-scale concept-space geometry. |
+| Widdows et al. 2021 | Include | Useful framing paper on linear compositionality. |
+
+## Research Area Overview
+
+The literature splits naturally into two halves. One half studies whether concepts are encoded linearly in model representations and what geometric structure that implies. The other half studies whether straight-line interpolation respects the actual geometry induced by a nonlinear generator or representation map. The project hypothesis sits exactly at the intersection: if some concepts are causally separable, straight linear operations may behave predictably, but if concepts are incongruent or structurally entangled, linear interpolation may deviate from semantically meaningful paths.
+
+## Key Papers
+
+### The Linear Representation Hypothesis and the Geometry of Large Language Models
+- Authors: Kiho Park, Yo Joong Choe, Victor Veitch
+- Year: 2024
+- Source: ICML 2024 / arXiv
+- Key Contribution: Formalizes LRH using counterfactuals, distinguishes unembedding and embedding representations, and defines a causal inner product.
+- Methodology: Uses counterfactual word pairs and LLaMA-2 representations; tests subspace structure, probe behavior, orthogonality, and interventions.
+- Datasets Used: Counterfactual word-pair sets plus paired multilingual Wikipedia contexts.
+- Results: Concept directions act as probes and steering vectors; causal inner product is more semantically faithful than naive Euclidean geometry.
+- Code Available: Yes, `code/linear_rep_geometry/`
+- Relevance to Our Research: Best reference point for the &#34;causally separable&#34; case and for defining what a clean concept direction should look like.
+
+### The Geometry of Categorical and Hierarchical Concepts in Large Language Models
+- Authors: Kiho Park, Yo Joong Choe, Yibo Jiang, Victor Veitch
+- Year: 2025
+- Source: ICLR 2025 / arXiv
+- Key Contribution: Extends LRH from binary contrasts to binary features, categorical concepts, and hierarchies; represents categories as polytopes and hierarchical relations via orthogonality.
+- Methodology: Estimates 900+ concept vectors from WordNet noun and verb hierarchies on Gemma and LLaMA-3.
+- Datasets Used: WordNet-derived synset and hypernym resources.
+- Results: Test words project near 1 on target feature vectors, random words near 0; child-parent and parent-grandparent vectors satisfy predicted orthogonality.
+- Code Available: Yes, `code/llm_categorical_hierarchical_representations/`
+- Relevance to Our Research: Most direct bridge from separable binary concepts to richer concept families where incongruence is likely to appear.
+
+### Toward a Flexible Framework for LRH Using Maximum Likelihood Estimation
+- Authors: Trung Nguyen, Yan Leng
+- Year: 2025
+- Source: arXiv
+- Key Contribution: Replaces the dependency on single-token counterfactual pairs with an activation-difference estimator (SAND) based on a vMF model.
+- Methodology: MLE over activation differences across multiple concepts and benchmarks.
+- Datasets Used: LLaMA activation-engineering benchmarks.
+- Results: Better flexibility and stronger monitoring/manipulation performance for ambiguous concepts.
+- Code Available: Not resolved in this pass.
+- Relevance to Our Research: Promising path for incongruent concepts, where clean counterfactual pairs may not exist.
+
+### On Linear Interpolation in the Latent Space of Deep Generative Models
+- Authors: Mike Yan Michelis, Quentin Becker
+- Year: 2021
+- Source: ICLR Workshop / OpenReview
+- Key Contribution: Shows straight-line interpolation in latent space can deviate arbitrarily from the shortest curve under the pull-back metric.
+- Methodology: Computes relative length improvement of a learned shorter curve over the straight line; compares models through Monte Carlo statistics rather than cherry-picked examples.
+- Datasets Used: MNIST-based VAE/BiGAN experiments.
+- Results: Non-zero relative improvement means the straight line is not a faithful proxy for geodesic interpolation.
+- Code Available: Yes, `code/generative_latent_space/`
+- Relevance to Our Research: Strong support for measuring interpolation quality geometrically rather than visually or by cosine alone.
+
+### Feature-Based Interpolation and Geodesics in the Latent Spaces of Generative Models
+- Authors: Lukasz Struski et al.
+- Year: 2019
+- Source: arXiv
+- Key Contribution: General interpolation framework for arbitrary latent densities and feature-favored paths.
+- Methodology: Defines a quality measure over curves and interprets maximization as geodesic search under a modified Riemannian metric.
+- Datasets Used: Mixtures of Gaussians, MNIST generative models, chemical compounds.
+- Results: Handles interpolation under non-Gaussian densities and constrained feature preferences.
+- Code Available: Yes, `code/feature_based_interpolation/`
+- Relevance to Our Research: Useful template when incongruent concepts require interpolation that explicitly prefers or avoids semantic features.
+
+### The Riemannian Geometry of Deep Generative Models
+- Authors: Hang Shao, Abhishek Kumar, P. Thomas Fletcher
+- Year: 2017
+- Source: arXiv
+- Key Contribution: Establishes pull-back geometry, geodesics, and parallel transport for deep generators.
+- Methodology: Derives algorithms on generated manifolds and tests them on image data.
+- Datasets Used: Image datasets for generative models.
+- Results: Learned manifolds were often close to low curvature, but not guaranteed to be Euclidean.
+- Code Available: Not gathered here.
+- Relevance to Our Research: Provides the right language and tools for a non-Euclidean interpolation analysis.
+
+## Common Methodologies
+
+- Counterfactual-pair estimation: used in Park et al. 2024 for binary contrasts.
+- Feature-vector estimation from token sets: used in Park et al. 2025 for WordNet attributes and categories.
+- Activation-difference estimation: used in Nguyen and Leng 2025 to relax strict counterfactual assumptions.
+- Pull-back metric / geodesic computation: used in Shao et al. 2017 and Michelis and Becker 2021.
+- Feature-constrained curve optimization: used in Struski et al. 2019.
+
+## Standard Baselines
+
+- Euclidean inner product versus causal inner product.
+- Straight-line interpolation versus geodesic or shorter-curve interpolation.
+- Random pair / shuffled-unembedding controls in concept geometry papers.
+- Simple linear probing or steering vectors from contrast pairs.
+
+## Evaluation Metrics
+
+- Projection score onto a concept vector.
+- Cosine similarity / orthogonality between concept directions or difference vectors.
+- Relative length improvement of a geodesic-like curve over a straight line.
+- Downstream monitoring/manipulation accuracy for steering vectors.
+- Retrieval or ranking accuracy for true versus corrupted compositional pairs.
+
+## Datasets in the Literature
+
+- Word-pair counterfactual sets: used for binary concept estimation.
+- WordNet noun/verb hierarchies: used for feature and hierarchy geometry.
+- Wikipedia paired contexts: used for probe validation.
+- MNIST and related latent-space image datasets: used for interpolation geometry.
+- Compositional caption benchmarks such as SugarCrepe / attribute-object datasets: useful for semantically incongruent composition tests, though not central in the LRH papers.
+
+## Gaps and Opportunities
+
+- LRH is well developed for clean binary contrasts, but much less settled for semantically awkward or incongruent concept combinations.
+- Existing LRH work mostly studies point estimates of directions and orthogonality, not interpolation trajectories between incompatible concepts.
+- Information-geometry papers study geodesics, but mostly in generative image models rather than LLM activation spaces.
+- There is no obvious off-the-shelf benchmark exactly matching &#34;incongruent concept interpolation&#34;; a mixed benchmark design is likely required.
+
+## Recommendations for Our Experiment
+
+- Recommended datasets:
+  - `datasets/cfq_mcd1` as the separable-control benchmark.
+  - `datasets/sugarcrepe_pp` as a lightweight incongruent-composition benchmark.
+  - WordNet and word-pair assets inside the cloned repos for concept construction.
+- Recommended baselines:
+  - Euclidean interpolation versus causal-inner-product-aware interpolation.
+  - Straight-line interpolation versus shortest-curve / geodesic surrogate.
+  - Clean contrast pairs versus ambiguous concept sets estimated with SAND-style activation differences.
+- Recommended metrics:
+  - Orthogonality violations between target and off-target concepts.
+  - Relative length improvement under pull-back metrics.
+  - Probe separability before and after interpolation.
+  - Ranking accuracy on true versus corrupted compositional examples.
+- Methodological considerations:
+  - Distinguish pointwise concept arithmetic from pathwise interpolation.
+  - Treat &#34;incongruent&#34; as a measurable property, e.g. low causal separability, low orthogonality, or high path curvature.
+  - Expect category-level or polytope structure to be more stable than a single direction for complex concepts.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. AUTHOR
+   - Use this exact author line in the \author{} block: Chenhao Tan and NeuriCo
+
+3. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+4. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+5. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+6. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+7. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+8. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+9. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+10. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   \author{Chenhao Tan and NeuriCo}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Command templates are pre-copied to paper_draft/commands/:
+   - math.tex: Math notation macros
+   - general.tex: Formatting macros
+   - macros.tex: Project-specific term definitions (customize this for your paper)
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read .codex/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.

@@ -1,0 +1,21 @@
+{
+  "python": "3.12.8 (main, Dec 19 2024, 14:33:20) [Clang 18.1.8 ]",
+  "config": {
+    "seed": 42,
+    "sample_per_split": 75,
+    "interpolation_steps": 11,
+    "knn_k": 15,
+    "anchor_neighbors": 12,
+    "batch_size": 128,
+    "temperature": 15.0,
+    "bootstrap_samples": 2000,
+    "control_train_fraction": 0.7,
+    "max_word_pairs_per_concept": 80,
+    "embedding_model": "text-embedding-3-large"
+  },
+  "hardware": {
+    "gpu_query": "nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv",
+    "gpu_summary": "name, memory.total [MiB], memory.free [MiB]\nNVIDIA RTX A6000, 49140 MiB, 33526 MiB\nNVIDIA RTX A6000, 49140 MiB, 48573 MiB\nNVIDIA RTX A6000, 49140 MiB, 48573 MiB\nNVIDIA RTX A6000, 49140 MiB, 48573 MiB"
+  },
+  "timestamp_utc": "2026-04-19T21:32:30Z"
+}

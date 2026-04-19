@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "stages": {
+    "resource_finder": {
+      "success": true,
+      "completion_marker": "/workspaces/interp-incongruent-79b3-codex/.resource_finder_complete",
+      "outputs": {
+        "literature_review": "/workspaces/interp-incongruent-79b3-codex/literature_review.md",
+        "resources_catalog": "/workspaces/interp-incongruent-79b3-codex/resources.md",
+        "papers_dir": "/workspaces/interp-incongruent-79b3-codex/papers",
+        "datasets_dir": "/workspaces/interp-incongruent-79b3-codex/datasets",
+        "code_dir": "/workspaces/interp-incongruent-79b3-codex/code"
+      },
+      "log_file": "/workspaces/interp-incongruent-79b3-codex/logs/resource_finder_codex.log",
+      "transcript_file": "/workspaces/interp-incongruent-79b3-codex/logs/resource_finder_codex_transcript.jsonl",
+      "elapsed_time": 659.4290452003479
+    },
+    "experiment_runner": {
+      "success": true,
+      "return_code": 0,
+      "elapsed_time": 2249.966616868973,
+      "log_file": "/workspaces/interp-incongruent-79b3-codex/logs/execution_codex.log",
+      "transcript_file": "/workspaces/interp-incongruent-79b3-codex/logs/execution_codex_transcript.jsonl"
+    }
+  },
+  "work_dir": "/workspaces/interp-incongruent-79b3-codex"
+}

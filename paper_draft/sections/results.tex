@@ -1,0 +1,36 @@
+\section{Results}
+\label{sec:results}
+
+\para{Separable controls recover a linear regime.} The control experiment confirms that \embmodel is not uniformly noisy. \input{tables/control_alignment}
+The best concepts show large margins with near-zero or negative off-target alignment. For example, \texttt{Ving-3pSg} reaches a margin of 0.647, and adjective superlatives and comparatives exceed 0.58. \Figref{fig:control-margin} visualizes the strongest recovered margins, while \figref{fig:control-heatmap} shows that interference is limited and concentrated in morphologically related concepts such as verb tense variants.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.48\linewidth]{control_alignment_margin.png}
+    \hfill
+    \includegraphics[width=0.48\linewidth]{control_interference_heatmap.png}
+    \caption{Control diagnostics on curated LRH word-pair assets. Left: top alignment margins for held-out concept pairs. Right: cross-concept interference matrix. Strong margins and sparse interference show that the embedding model still exhibits a clean linear regime on curated contrasts.}
+    \label{fig:control-margin}
+    \label{fig:control-heatmap}
+\end{figure}
+
+\para{Pooled incongruent paths do not look globally worse.} \input{tables/paired_metrics}
+At the pooled level, incongruent paths are {\it less} off-manifold and shorter in the dual space than congruent controls. The mean differences are small but statistically reliable for \offmanifold ($-0.0083$, $q=0.0262$) and \dualpath ($-0.0462$, $q=0.0262$). By contrast, \dualratio and switch count do not survive correction, and \graphratio collapses to 1.0 for both conditions. This pooled result directly contradicts the original simple hypothesis that incongruence should always produce a more curved or unstable path.
+
+\para{Subset heterogeneity drives the pooled reversal.} \input{tables/subset_breakdown}
+The reversal is not noise; it comes from clear heterogeneity across corruption types. The \texttt{replace\_relation} subset behaves like genuine incongruence: incongruent endpoints are farther from the source than paraphrases, and the interpolation path becomes both more off-manifold and longer in the dual space. By contrast, in \texttt{swap\_atribute} and \texttt{swap\_object}, the negative endpoint is often {\it closer} to the source than the paraphrase. This makes the incongruent path locally easier even when the sentence is semantically corrupted.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.32\linewidth]{off_manifold_mean_by_pair_type.png}
+    \hfill
+    \includegraphics[width=0.32\linewidth]{dual_detour_ratio_by_pair_type.png}
+    \hfill
+    \includegraphics[width=0.32\linewidth]{detour_ratio_by_pair_type.png}
+    \caption{Main path metrics by subset and pair type. Left: off-manifold deviation shows the strongest reversal between relation replacements and lexical swaps. Center: dual detour is modestly higher for relation replacements but close elsewhere. Right: graph detour ratio is uninformative in this sampled graph because both conditions remain on shortest paths of length equal to direct distance.}
+    \label{fig:main-metrics}
+\end{figure}
+
+\para{Qualitative trajectories isolate the failure mode.} The retrieval trajectories show what ``instability'' means in practice. In \texttt{replace\_relation}, the midpoint often flips abruptly between incompatible event descriptions rather than moving through a smooth semantic neighborhood. One representative source, ``Two people are holding phones together to create a linking,'' shifts toward the contradictory target ``Two men are dropping phones, causing them to unlink,'' with \offmanifold of 0.2706 and \dualratio of 1.3243. Another source, ``The back view of an airplane on a runway,'' transitions toward ``An airplane is flying over a runway,'' with \offmanifold 0.2672 and \dualratio 1.3323. These are the clearest examples of a straight chord leaving the empirical semantic manifold.
+
+By contrast, some \texttt{swap\_object} negatives remain locally close to the source because they preserve most of the wording. For example, the source ``A city scape scene'' paired with the negative ``A train yard scene with a city scape in the foreground'' yields a lower \offmanifold score (0.2464) than the paraphrase control (0.2660), even though the negative is semantically wrong. This explains why contradiction alone is too coarse a predictor of path instability.
